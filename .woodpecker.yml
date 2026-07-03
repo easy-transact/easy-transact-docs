@@ -1,0 +1,38 @@
+when:
+  branch: main
+  event: push
+
+steps:
+  - name: build-and-push
+    image: woodpeckerci/plugin-docker-buildx
+    privileged: true
+    settings:
+      repo: ghcr.io/easy-transact/easy-transact-docs
+      registry: ghcr.io
+      username: FNMALIC
+      password:
+        from_secret: GITHUB_TOKEN
+      tags:
+        - latest
+        - ${CI_COMMIT_SHA}
+      platforms:
+        - linux/amd64
+      cache: false
+      cache_repo: ghcr.io/easy-transact/easy-transact-docs-cache
+    when:
+      branch: main
+      event: push
+
+  - name: deploy
+    image: alpine/k8s:1.28.3
+    environment:
+      KUBECONFIG_DATA:
+        from_secret: KUBECONFIG
+    commands:
+      - echo $KUBECONFIG_DATA | base64 -d > /tmp/kubeconfig
+      - SHA=$CI_COMMIT_SHA
+      - kubectl --kubeconfig=/tmp/kubeconfig set image deployment/easy-transact-docs docs=ghcr.io/easy-transact/easy-transact-docs:$SHA -n easy-transact
+      - kubectl --kubeconfig=/tmp/kubeconfig rollout status deployment/easy-transact-docs -n easy-transact --timeout=300s
+    when:
+      branch: main
+      event: push

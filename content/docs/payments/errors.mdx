@@ -1,0 +1,52 @@
+---
+title: Errors
+description: Standard HTTP error codes and responses
+---
+
+# Errors
+
+The EasyTransact API uses standard HTTP status codes to indicate the success or failure of an API request.
+
+## Error Response Format
+
+Errors are returned in a standard JSON format.
+
+**General Errors:**
+```json
+{
+  "detail": "Human-readable error message"
+}
+```
+
+**Field Validation Errors:**
+```json
+{
+  "amount": ["Amount must be greater than zero."],
+  "service_code": ["Unrecognized service_code."]
+}
+```
+
+> [!WARNING]
+> There are currently no stable machine-readable error codes. Partners must match on the detail strings or field names rather than specific error codes.
+
+## Common Error Codes
+
+### 401 Unauthorized
+Returned when the API key is missing, invalid, or the HMAC signature verification fails.
+
+```json
+{
+  "detail": "Invalid API Key"
+}
+```
+
+### 429 Too Many Requests
+Returned when you have exceeded the rate limit. This can happen for endpoints like status checks (`60/minute`) or status refresh (`5/minute`).
+
+It will also be returned if your IP is blocked after 5 failed authentication attempts (Blocked for 5 minutes).
+
+```json
+{
+  "detail": "Request was throttled. Expected available in 55 seconds."
+}
+```

@@ -1,0 +1,8 @@
+{
+  "pages": [
+    "introduction",
+    "authentication",
+    "payments",
+    "webhooks"
+  ]
+}

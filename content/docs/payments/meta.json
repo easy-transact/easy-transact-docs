@@ -1,0 +1,7 @@
+{
+  "pages": [
+    "initiate-transaction",
+    "check-status",
+    "errors"
+  ]
+}

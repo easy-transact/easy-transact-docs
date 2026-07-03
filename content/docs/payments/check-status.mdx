@@ -1,0 +1,71 @@
+---
+title: Check Status
+description: Poll the status of a transaction
+---
+
+# Check Transaction Status
+
+You can poll the status of a transaction if you are not using webhooks, or if you missed a webhook callback.
+
+`GET /api/v1/partner/transactions/status?vendor_reference=<your-vendor-reference>`
+
+**Note**: The intelligence report mentions `order_number` or `idempotency_key`, but the API explicitly requires `vendor_reference`.
+
+## Rate Limits
+The status check endpoint is throttled to **60 requests per minute** per user. 
+
+If you exceed this rate limit, you will receive a `429 Too Many Requests` error. We strongly recommend relying on **Webhooks** for status updates rather than aggressive polling.
+
+## Force Refresh
+If a transaction has been stuck in `PENDING` or `PROCESSING` and you need to force the system to check the latest status with the external provider, you can use the refresh endpoint:
+
+`POST /api/v1/partner/transactions/status-refresh`
+
+**Body**:
+```json
+{
+  "vendor_reference": "TX-998877"
+}
+```
+
+**Note**: This endpoint is strictly a fallback and is heavily throttled to **5 requests per minute** per user. You should only use it when a transaction has been in a non-terminal state for an extended period.
+
+## Example Request & Response
+
+**Request:**
+```bash
+curl -X GET "https://api.easy-transact.net/api/v1/partner/transactions/status?vendor_reference=TX-998877" \
+  -H "X-API-KEY: sk_live_your_key_here"
+```
+
+**Response:**
+```json
+{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "order_number": "COMP-20260703-A1B2C3D4",
+  "vendor_reference": "TX-998877",
+  "amount": "1500.00",
+  "fees": "0.00",
+  "total_amount": "1500.00",
+  "currency_code": "XAF",
+  "country_code": "CM",
+  "transaction_type": "DEPOSIT",
+  "status": "SUCCESS",
+  "date": "2026-07-03T10:00:00Z",
+  "created_at": "2026-07-03T10:00:00Z",
+  "completed_at": "2026-07-03T10:01:05Z",
+  "sender_number": "237612345678",
+  "receiver_number": "",
+  "sender_name": "",
+  "receiver_name": "",
+  "country_from": "CM",
+  "country_to": "CM",
+  "service": "Mobile Money Deposit",
+  "service_code": "CASH_IN_CM",
+  "method": "MTN Mobile Money",
+  "is_fees_inclusive": true,
+  "operator_id": "8374928374",
+  "provider_transaction_id": "MP-987654321",
+  "failure_reason": null
+}
+```

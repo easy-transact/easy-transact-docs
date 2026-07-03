@@ -1,0 +1,47 @@
+---
+title: Authentication
+description: Secure your requests using API keys and HMAC signatures
+---
+
+# Authentication
+
+The EasyTransact API uses API keys to authenticate requests.
+
+You must provide your API key in one of the following HTTP headers:
+- `X-API-KEY: <your-api-key>`
+- `Authorization: Bearer <your-api-key>`
+
+## Key Prefixes
+
+Your API keys are prefixed to indicate their usage:
+- `sk_live_...`: Production keys meant for real transactions.
+
+## Optional HMAC Signing
+
+For enhanced security, you can optionally sign your requests using HMAC-SHA256. If you choose to use this, you must provide two additional headers:
+
+- `X-Signature`: The computed HMAC-SHA256 signature.
+- `X-Timestamp`: The current Unix epoch timestamp in seconds.
+
+### Signature Generation
+
+The signature is generated using your API Secret (`api_secret`).
+The signing string is a concatenation of the raw request payload and the timestamp: `payload + timestamp`.
+
+Requests with a timestamp older than 5 minutes (300 seconds) will be rejected to prevent replay attacks.
+
+### Example Request
+
+```bash
+curl -X POST https://api.easy-transact.net/api/v1/partner/transactions/initiate \
+  -H "X-API-KEY: sk_live_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": "1000",
+    "currency_code": "XAF",
+    "service_code": "CASH_IN_CM",
+    "country_code": "CM",
+    "sender_number": "237600000000",
+    "vendor_reference": "ORDER-123"
+  }'
+```

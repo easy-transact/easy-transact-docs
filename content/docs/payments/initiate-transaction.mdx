@@ -1,0 +1,70 @@
+---
+title: Initiate a Transaction
+description: The core endpoint for initiating payments, collections, or disbursements
+---
+
+# Initiate a Transaction
+
+The core endpoint for initiating payments, collections, or disbursements.
+
+`POST /api/v1/partner/transactions/initiate`
+
+## Request Fields
+
+The API routes the transaction based on the provided `service_code`. 
+
+### Required Fields
+- `amount` (Decimal): The amount to transact. Must be greater than zero.
+- `service_code` (String): The routing code for the service. Examples: `SEND_MONEY`, `CASH_OUT_CM`, `CASH_IN_CM`. Codes containing `CASH_OUT`, `DISBURS`, `PAYOUT`, `WITHDRAWAL` or `SEND_MONEY` are treated as disbursements. Codes containing `CASH_IN`, `COLLECT` or `DEPOSIT` are treated as collections.
+- `country_code` (String): The country code (e.g., `CM`).
+- `currency_code` (String): The currency (e.g., `XAF`).
+- `vendor_reference` (String): Your unique internal reference for this transaction. **This acts as your idempotency key**. Submitting a duplicate `vendor_reference` will result in an error instead of creating a duplicate transaction.
+
+### Conditionally Required Fields
+- `receiver_number` (String): Required for disbursements (payouts).
+- `sender_number` (String): Required for collections (deposits).
+
+### Optional Fields
+- `network_code` (String): The telecom network code. Auto-detected from the phone number if omitted.
+
+## Idempotency Behavior
+EasyTransact relies on your `vendor_reference` for idempotency. If you retry a request with an existing `vendor_reference`, the system will validate it against the existing transaction and reject it if it's a duplicate.
+
+## Status Lifecycle
+
+Transactions transition through the following states:
+
+| Status | Description |
+|--------|-------------|
+| `INITIATED` | Transaction created, not yet sent to provider. |
+| `PENDING` | Submitted to provider, awaiting confirmation. |
+| `PROCESSING` | Provider acknowledged, currently in-flight. |
+| `SUCCESS` | Provider confirmed the transaction as successful. |
+| `FAILED` | Provider returned a failure or an internal error occurred. |
+| `TIMEOUT` | No response received within the allowed window. |
+| `REVERSED` | Transaction was reversed post-success. |
+| `REFUNDED` | A refund was issued for this transaction. |
+| `EXPIRED` | Payment link or queued transaction expired. |
+
+## Example Request & Response
+
+**Request:**
+```json
+{
+  "amount": "1500.00",
+  "service_code": "CASH_IN_CM",
+  "country_code": "CM",
+  "currency_code": "XAF",
+  "sender_number": "237612345678",
+  "vendor_reference": "TX-998877"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "INITIATED",
+  "vendor_reference": "TX-998877",
+  "is_fees_inclusive": true
+}
+```
