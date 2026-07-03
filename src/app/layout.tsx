@@ -11,6 +11,9 @@ export default function Layout({ children }: LayoutProps<'/'>) {
     <html lang="en" className={inter.className} suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
         <RootProvider>{children}</RootProvider>
+        <footer className="mt-auto py-6 text-center text-sm text-muted-foreground border-t bg-background">
+          made by easy transact dev team
+        </footer>
       </body>
     </html>
   );
