@@ -1,0 +1,61 @@
+---
+title: Generate Payment Link
+description: Create a checkout link for customers to pay via a hosted interface
+---
+
+# Generate a Payment Link
+
+You can generate a hosted payment link for your customers. When the customer visits the link, they will see a secure checkout interface to enter their phone number and complete the transaction.
+
+`POST /api/v1/partner/transactions/checkout-link`
+
+## Request Fields
+
+### Required Fields
+- `vendor_reference` (String): Your unique internal reference for this checkout session. Must be unique per link.
+- `description` (String): A description of what the payment is for. This will be shown to the customer on the checkout page.
+- `service_code` (String): The type of service. Must be either `CASH_IN` (collection/deposit) or `CASH_OUT` (disbursement/payout).
+
+### Optional Fields
+- `amount` (Decimal): The amount to collect. If omitted or sent as `null`, the payment link becomes an **Open Amount** link, meaning the customer will be able to type in how much they want to pay on the checkout screen.
+- `currency_code` (String): The currency code. Defaults to `XAF`.
+- `success_url` (URL): The URL to redirect the customer to upon a successful payment.
+- `cancel_url` (URL): The URL to redirect the customer to if they cancel the payment or it fails.
+- `expires_at` (Datetime): ISO 8601 timestamp for when the link should expire. If omitted, the link remains active indefinitely.
+
+## Example Request
+
+```json
+{
+  "vendor_reference": "ORDER-12345",
+  "description": "Payment for premium services",
+  "amount": "5000.00", 
+  "currency_code": "XAF",
+  "service_code": "CASH_IN",
+  "success_url": "https://your-site.com/checkout/success",
+  "cancel_url": "https://your-site.com/checkout/cancel"
+}
+```
+
+## Example Response
+
+The API will return the generated payment link object, including the URL you should redirect your customer to.
+
+```json
+{
+  "id": "e3b0c442-989b-4643-9b18-a4b0c4420000",
+  "amount": "5000.00",
+  "currency_code": "XAF",
+  "service_code": "CASH_IN",
+  "description": "Payment for premium services",
+  "vendor_reference": "ORDER-12345",
+  "link_type": "PAYMENT",
+  "status": "ACTIVE",
+  "success_url": "https://your-site.com/checkout/success",
+  "cancel_url": "https://your-site.com/checkout/cancel",
+  "expires_at": null,
+  "is_expired": false
+}
+```
+
+Once generated, you simply need to build the checkout URL on your end by appending the returned `id` to the base checkout URL provided in your partner dashboard, or as configured for your frontend.

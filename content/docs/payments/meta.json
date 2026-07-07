@@ -1,6 +1,7 @@
 {
   "pages": [
     "initiate-transaction",
+    "payment-links",
     "check-status",
     "errors"
   ]

@@ -11,42 +11,174 @@ The EasyTransact API uses standard HTTP status codes to indicate the success or 
 
 Errors are returned in a standard JSON format.
 
+All error responses include a stable, machine-readable `code` field alongside the human-readable `detail` message. You can program against the `code` field — it is guaranteed to be present and stable across API versions.
+
 **General Errors:**
 ```json
 {
-  "detail": "Human-readable error message"
+  "detail": "Human-readable error message",
+  "code": "MACHINE_READABLE_ERROR_CODE"
 }
 ```
 
 **Field Validation Errors:**
 ```json
 {
-  "amount": ["Amount must be greater than zero."],
-  "service_code": ["Unrecognized service_code."]
+  "amount": {
+    "detail": ["Amount must be greater than zero."],
+    "code": "AMOUNT_MUST_BE_GREATER_THAN_ZERO"
+  },
+  "service_code": {
+    "detail": ["Unrecognized service_code."],
+    "code": null
+  }
 }
 ```
 
-> [!WARNING]
-> There are currently no stable machine-readable error codes. Partners must match on the detail strings or field names rather than specific error codes.
+> [!NOTE]
+> The `detail` field is always preserved exactly as-is. Partners already parsing `detail` do not need to change any existing integration logic — the `code` field is purely additive.
 
-## Common Error Codes
+> [!NOTE]
+> If an error does not yet have a mapped code, the `code` field will be `"UNKNOWN_ERROR"` for general errors, or `null` for field-level errors. The key is always present and never omitted.
+
+---
+
+## Error Codes Reference
+
+### Amount Errors
+
+Returned when the `amount` field in your request is invalid.
+
+| Code | HTTP Status | What it means |
+|---|---|---|
+| `INVALID_AMOUNT_VALUE` | `400` | The value provided for `amount` is not a valid number. Use a numeric string such as `"1500"` or `"1500.00"`. |
+| `AMOUNT_MUST_BE_GREATER_THAN_ZERO` | `400` | The `amount` must be positive and greater than zero. |
+| `AMOUNT_OUTSIDE_PARTNER_LIMITS` | `400` | The `amount` is below the minimum or above the maximum allowed for this service on your account. Contact support to review your limits. |
+
+---
+
+### Transaction Type Errors
+
+Returned when the `transaction_type` field is missing or not accepted for the requested service.
+
+| Code | HTTP Status | What it means |
+|---|---|---|
+| `INVALID_TRANSACTION_TYPE` | `400` | The `transaction_type` you provided is not valid. Accepted values are `CASH_IN`, `CASH_OUT`, or `TRANSFER`. |
+| `MISSING_TRANSACTION_TYPE` | `400` | No `transaction_type` was provided and none could be inferred from the service configuration. Please supply it explicitly. |
+
+---
+
+### Phone Number Errors
+
+Returned when `sender_number` or `receiver_number` is missing or not valid for the target country.
+
+| Code | HTTP Status | What it means |
+|---|---|---|
+| `RECEIVER_NUMBER_REQUIRED` | `400` | The `receiver_number` field is required for this operation. |
+| `SENDER_NUMBER_REQUIRED` | `400` | The `sender_number` field is required for this operation. |
+| `INVALID_PHONE_NUMBER_FOR_COUNTRY` | `400` | The phone number provided is not valid for the specified country. Check the format and country dial code. |
+
+---
+
+### Country, Network & Service Errors
+
+Returned when the `country_code`, `network_code`, `service_code`, or `currency_code` in your request does not match a supported configuration.
+
+| Code | HTTP Status | What it means |
+|---|---|---|
+| `UNSUPPORTED_COUNTRY` | `400` | The `country_code` you specified is not supported. |
+| `UNSUPPORTED_RECIPIENT_COUNTRY` | `400` | The recipient's country is not supported for this operation. |
+| `COUNTRY_NOT_FOUND` | `400` | No country was found matching the provided `country_code`. |
+| `NETWORK_NOT_FOUND` | `400` | The `network_code` does not exist for the specified country. |
+| `SERVICE_NOT_FOUND` | `400` | The `service_code` is not available for the specified country and network combination. |
+| `CURRENCY_MISMATCH` | `400` | The `currency_code` you provided does not match the required currency for this service. |
+| `INVALID_CURRENCY_CODE` | `400` | The `currency_code` provided is not recognized. |
+
+---
+
+### Partner & Authorization Errors
+
+Returned when your account or API key does not have access to perform the requested operation.
+
+| Code | HTTP Status | What it means |
+|---|---|---|
+| `INVALID_OR_INACTIVE_PARTNER` | `403` | Your partner account is inactive or the API key is invalid. Contact support. |
+| `PARTNER_SERVICE_NOT_SUPPORTED` | `400` | Your account is not authorized for this service on the detected network. Contact support to enable it. |
+| `IP_NOT_AUTHORIZED` | `403` | The IP address of this request is not on your authorized whitelist. Add it in your dashboard under Security settings. |
+| `DUPLICATE_ORDER_REFERENCE` | `400` | The `vendor_reference` you provided has already been used in a previous successful or active transaction. Use a unique reference for each new order. |
+
+---
+
+### P2P Transfer Errors
+
+Returned when initiating a person-to-person transfer.
+
+| Code | HTTP Status | What it means |
+|---|---|---|
+| `CANNOT_SEND_TO_SELF` | `400` | The sender and recipient cannot be the same account. |
+| `RECIPIENT_HANDLE_NOT_FOUND` | `404` | No account was found matching the provided recipient identifier. |
+| `RECIPIENT_NO_VALID_WALLETS` | `400` | The recipient exists but has no active wallet able to receive funds. |
+
+---
+
+### Balance Errors
+
+Returned when the operation cannot complete due to insufficient funds.
+
+| Code | HTTP Status | What it means |
+|---|---|---|
+| `INSUFFICIENT_WALLET_BALANCE` | `400` | Your wallet does not have enough funds to cover this transaction. Top up your balance and retry. |
+| `INSUFFICIENT_FUNDS` | `400` | Insufficient funds to complete this operation. |
+
+---
+
+### Wallet Ownership Errors
+
+Returned when a wallet ID provided in the request does not belong to your account.
+
+| Code | HTTP Status | What it means |
+|---|---|---|
+| `SOURCE_WALLET_NOT_FOUND` | `404` | The source wallet specified was not found. Verify the wallet ID. |
+| `WALLET_NOT_OWNED` | `403` | The wallet provided does not belong to your account. |
+
+---
+
+### Rejected Transactions
+
+| Code | HTTP Status | What it means |
+|---|---|---|
+| `TRANSACTION_REJECTED_BY_RISK` | `400` | This transaction was declined by our risk controls. If you believe this is an error, contact support. |
+
+---
+
+### Fallback
+
+| Code | HTTP Status | What it means |
+|---|---|---|
+| `UNKNOWN_ERROR` | varies | An unexpected error occurred. Use the `detail` message for context and contact support if the issue persists. |
+
+---
+
+## Common HTTP Status Codes
 
 ### 401 Unauthorized
 Returned when the API key is missing, invalid, or the HMAC signature verification fails.
 
 ```json
 {
-  "detail": "Invalid API Key"
+  "detail": "Invalid API Key",
+  "code": "UNKNOWN_ERROR"
 }
 ```
 
 ### 429 Too Many Requests
 Returned when you have exceeded the rate limit. This can happen for endpoints like status checks (`60/minute`) or status refresh (`5/minute`).
 
-It will also be returned if your IP is blocked after 5 failed authentication attempts (Blocked for 5 minutes).
+It will also be returned if your IP is blocked after 5 failed authentication attempts (blocked for 5 minutes).
 
 ```json
 {
-  "detail": "Request was throttled. Expected available in 55 seconds."
+  "detail": "Request was throttled. Expected available in 55 seconds.",
+  "code": "UNKNOWN_ERROR"
 }
 ```
