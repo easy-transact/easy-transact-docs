@@ -16,7 +16,7 @@ The API routes the transaction based on the provided `service_code`.
 ### Required Fields
 - `amount` (Decimal): The amount to transact. Must be greater than zero.
 - `service_code` (String): The routing code for the service. Examples: `SEND_MONEY`, `CASH_OUT_CM`, `CASH_IN_CM`. Codes containing `CASH_OUT`, `DISBURS`, `PAYOUT`, `WITHDRAWAL` or `SEND_MONEY` are treated as disbursements. Codes containing `CASH_IN`, `COLLECT` or `DEPOSIT` are treated as collections.
-- `country_code` (String): The country code (e.g., `CM`).
+- `country_code` (String): The country where the money is paid out (disbursements) or collected (collections), e.g. `CM`. To pay a beneficiary in another country from your balance, see [Pay Out in Another Country](/docs/payments/cross-country-payouts).
 - `currency_code` (String): The currency (e.g., `XAF`).
 - `vendor_reference` (String): Your unique internal reference for this transaction. **This acts as your idempotency key**. Submitting a duplicate `vendor_reference` will result in an error instead of creating a duplicate transaction.
 

@@ -1,0 +1,141 @@
+---
+title: Pay Out in Another Country
+description: Use one wallet balance to send money to mobile money accounts in every country enabled on your account
+---
+
+# Pay Out in Another Country
+
+With a **single-wallet account**, one EasyTransact balance funds your disbursements (cash-outs) in **every country enabled on your account** — not only the country where you topped up. A partner based in Cameroon can, for example, pay a beneficiary in Congo or Gabon directly from the same balance.
+
+There is no new endpoint: you use the standard [Initiate a Transaction](/docs/payments/initiate-transaction) endpoint and set `country_code` to the **country where the money is paid out**.
+
+> [!NOTE]
+> Single-wallet mode is enabled per account by EasyTransact. If your account still has one wallet per country, contact your account manager to have it switched over — your existing balances are merged into one wallet at that time, and nothing changes in your integration.
+
+---
+
+## Supported Countries
+
+Cross-country payouts are available in the CEMAC zone, where every country uses the Central African CFA franc (`XAF`), so **no currency conversion is applied**:
+
+| `country_code` | Country |
+|---|---|
+| `CM` | Cameroon |
+| `GA` | Gabon |
+| `TD` | Chad |
+| `CG` | Republic of the Congo |
+| `CF` | Central African Republic |
+| `GQ` | Equatorial Guinea |
+
+Only the countries and networks enabled on your account can be used. If a country is not enabled, the request is rejected with `PARTNER_SERVICE_NOT_SUPPORTED` — contact support to enable it.
+
+---
+
+## How It Works
+
+1. **You send** a disbursement request with `country_code` set to the destination country.
+2. **We debit your wallet** with the `amount` **plus fees**, immediately, before the payout is sent. If your balance is too low, the request is rejected and nothing is debited.
+3. **The beneficiary receives exactly `amount`** on their mobile money account in the destination country. Fees are never deducted from what the beneficiary receives.
+4. **If the payout fails or times out**, the full amount debited (amount + fees) is **refunded to your wallet** automatically.
+5. You receive the final status on your [callback URL](/docs/webhooks/handling-callbacks), or by [checking the status](/docs/payments/check-status).
+
+---
+
+## Request
+
+`POST /api/v1/partner/transactions/initiate`
+
+| Field | Required | Description |
+|---|---|---|
+| `service_code` | Yes | The payout service for the destination country, e.g. `CASH_OUT_CG`, or `SEND_MONEY`. |
+| `country_code` | Yes | The **destination** country (where the beneficiary is), e.g. `CG`. |
+| `currency_code` | Yes | `XAF`. |
+| `amount` | Yes | The amount the beneficiary must receive. |
+| `receiver_number` | Yes | The beneficiary's mobile money number in the destination country. |
+| `vendor_reference` | Yes | Your unique reference for this payout. Use a new reference for every payout. |
+| `network_code` | No | Detected automatically from `receiver_number`. |
+
+> [!NOTE]
+> Send `receiver_number` in the **local format of the destination country, without the country prefix** — for example `061234567` for Congo, not `+242061234567`. The number must be valid for the `country_code` you send.
+
+### Example: Cameroon-based partner paying a beneficiary in Congo
+
+```bash
+curl -X POST https://api.easy-transact.net/api/v1/partner/transactions/initiate \
+  -H "X-API-KEY: <your API key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "service_code": "CASH_OUT_CG",
+    "country_code": "CG",
+    "currency_code": "XAF",
+    "amount": "10000",
+    "receiver_number": "061234567",
+    "vendor_reference": "PAYOUT-2026-000123"
+  }'
+```
+
+**Response (`202 Accepted`):**
+
+```json
+{
+  "status": "PENDING",
+  "vendor_reference": "PAYOUT-2026-000123"
+}
+```
+
+With a fee of 300 XAF on this service, your wallet is debited **10,300 XAF**, and the beneficiary in Congo receives **10,000 XAF**.
+
+### Example: same partner, beneficiary in Gabon
+
+```json
+{
+  "service_code": "CASH_OUT_GA",
+  "country_code": "GA",
+  "currency_code": "XAF",
+  "amount": "25000",
+  "receiver_number": "077873777",
+  "vendor_reference": "PAYOUT-2026-000124"
+}
+```
+
+---
+
+## Fees
+
+The fee is the one configured on your account **for the destination service** (for example, `CASH_OUT_CG` for a payout to Congo). Ask your account manager for your fee grid per country.
+
+For each payout, the [status response](/docs/payments/check-status) returns `amount` (received by the beneficiary), `fees`, and `total_amount` (debited from your wallet).
+
+---
+
+## Collections
+
+The same applies to collections (`COLLECT_MONEY`, cash-in): money collected from a customer in any enabled country is credited to your single wallet, and can then be used for payouts in any other enabled country.
+
+Collections must be in your wallet's currency (`XAF`). A collection in another currency is rejected with `CURRENCY_MISMATCH`.
+
+---
+
+## Common Errors
+
+| Situation | What you get |
+|---|---|
+| Balance lower than `amount` + fees | `400` — `Insufficient wallet balance. Required: …` Nothing is debited. |
+| Destination country or network not enabled on your account | `400` — `PARTNER_SERVICE_NOT_SUPPORTED` |
+| `receiver_number` not valid for `country_code` | `400` — `INVALID_PHONE_NUMBER_FOR_COUNTRY` |
+| `amount` outside the limits of the service | `400` — `AMOUNT_OUTSIDE_PARTNER_LIMITS` |
+| `vendor_reference` already used | `400` — `DUPLICATE_ORDER_REFERENCE` |
+
+See [Errors](/docs/payments/errors) for the full list.
+
+---
+
+## Changes for Existing Integrations
+
+If your account is switched to a single wallet:
+
+- **No change is required** to your `/initiate` requests.
+- **`sender_country_code` and `source_wallet_id` are ignored.** The single wallet is always used.
+- **`POST /api/v1/partner/transactions/send-money` is retired** and returns `410 Gone`. Use `POST /api/v1/partner/transactions/initiate` instead, with `country_code` set to the destination country.
+- **`POST /api/v1/partner/transactions/initiate-remittance` is not available** for single-wallet accounts — a standard `/initiate` payout already covers paying out in another country.
+- **Top-ups (float requests)** are made on your single wallet.

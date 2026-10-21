@@ -1,6 +1,7 @@
 {
   "pages": [
     "initiate-transaction",
+    "cross-country-payouts",
     "payment-links",
     "check-status",
     "errors"
